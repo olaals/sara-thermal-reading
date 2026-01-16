@@ -18,7 +18,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter as OTLPHttpSpanExporter,
 )
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, LogExporter
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, LogRecordExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
@@ -40,7 +40,7 @@ def setup_open_telemetry() -> None:
     resource = Resource.create({"service.name": service_name})
 
     span_exporter: SpanExporter
-    log_exporter: LogExporter
+    log_exporter: LogRecordExporter
 
     if protocol == "http":
         base = endpoint.rstrip("/")
