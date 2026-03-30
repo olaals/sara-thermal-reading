@@ -10,13 +10,13 @@ from sara_thermal_reading.config.settings import settings
 from sara_thermal_reading.dev_utils.create_reference_polygon import (
     create_reference_polygon,
 )
-from sara_thermal_reading.dev_utils.run_fff_workflow_local_files import (
-    run_fff_workflow_local_files,
+from sara_thermal_reading.dev_utils.run_thermal_workflow_local_files import (
+    run_thermal_workflow_local_files,
 )
 from sara_thermal_reading.file_io.blob import BlobStore
-from sara_thermal_reading.main_fff_workflow import process_thermal_image_fff
+from sara_thermal_reading.main_thermal_workflow import process_thermal_image
 from sara_thermal_reading.visualization.plotting import (
-    plot_fff_from_path,
+    plot_thermal_from_path,
     plot_thermal_image,
 )
 
@@ -37,7 +37,7 @@ def run_fff_workflow(
         "test_inspection_description", help="Inspection description"
     ),
 ) -> None:
-    run_fff_workflow_local_files(
+    run_thermal_workflow_local_files(
         polygon_path,
         reference_image_path,
         source_image_path,
@@ -47,13 +47,13 @@ def run_fff_workflow(
 
 
 @app.command()
-def plot_fff(
+def plot_thermal(
     file_path: Path,
     polygon_json_path: Path = typer.Option(
         None, help="Path to the polygon JSON file to plot"
     ),
 ) -> None:
-    plot_fff_from_path(file_path, polygon_json_path)
+    plot_thermal_from_path(file_path, polygon_json_path)
 
 
 @app.command()
@@ -67,9 +67,9 @@ def plot_current_reference_image_and_polygon(
         connection_string=settings.REFERENCE_STORAGE_CONNECTION_STRING,
     )
     reference_image_blob_name = (
-        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_FFF_FILENAME}"
+        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_TIFF_FILENAME}"
     )
-    reference_image_fff: np.ndarray = reference_blob_store.download_fff(
+    reference_image: np.ndarray = reference_blob_store.download_thermal_tiff(
         reference_image_blob_name
     )
     reference_polygon_blob_name = (
@@ -80,7 +80,7 @@ def plot_current_reference_image_and_polygon(
     )
 
     plot_thermal_image(
-        reference_image_fff,
+        reference_image,
         f"Reference Image: {installation_code}/{tag_id}_{inspection_description}",
         reference_polygon,
     )
@@ -164,11 +164,11 @@ def create_polygon_cloud(
         installation_code="kaa",
         connection_string=settings.REFERENCE_STORAGE_CONNECTION_STRING,
     )
-    reference_image_fff_blob_name = (
-        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_FFF_FILENAME}"
+    reference_image_blob_name = (
+        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_TIFF_FILENAME}"
     )
-    reference_image_fff: np.ndarray = reference_blob_store.download_fff(
-        reference_image_fff_blob_name
+    reference_image: np.ndarray = reference_blob_store.download_thermal_tiff(
+        reference_image_blob_name
     )
     reference_polygon_blob_name = (
         f"{tag_id}_{inspection_description}/{settings.REFERENCE_POLYGON_FILENAME}"
@@ -194,7 +194,7 @@ def create_polygon_cloud(
     print("You should now create the polygon. ")
     print("If the polygon is empty, there will not be stored a reference polygon. ")
     polygon: list[tuple[int, int]] | None = create_reference_polygon(
-        ref_image_fff=reference_image_fff,
+        ref_image_fff=reference_image,
         ref_image_jpg=reference_image_jpg,
         ref_polygon=reference_polygon,
     )
@@ -220,13 +220,13 @@ def view_all_thermal_from_blobs() -> None:
         connection_string=settings.SOURCE_STORAGE_CONNECTION_STRING,
     )
     all_blob_names: list[str] = source_blob_store.list_blobs_by_prefix(prefix="")
-    all_fff_blob_names: list[str] = [
-        name for name in all_blob_names if name.endswith(".fff")
+    all_tiff_blob_names: list[str] = [
+        name for name in all_blob_names if name.endswith(".tiff")
     ]
 
-    for fff_blob_name in all_fff_blob_names:
-        image_fff = source_blob_store.download_fff(fff_blob_name)
-        time_str = fff_blob_name.split("__")[-1].replace(".fff", "")
+    for tiff_blob_name in all_tiff_blob_names:
+        image = source_blob_store.download_thermal_tiff(tiff_blob_name)
+        time_str = tiff_blob_name.split("__")[-1].replace(".tiff", "")
         time_datetime = datetime.strptime(time_str, "%Y%m%d-%H%M%S")
 
         year, month, day, hour = (
@@ -240,7 +240,7 @@ def view_all_thermal_from_blobs() -> None:
         ambient_temp_from_api = response.json()["data"][0]["observations"][0]["value"]
         print(f"Ambient temperature from API: {ambient_temp_from_api:.2f} °C")
 
-        ambient_temp_in_image = np.median(image_fff)
+        ambient_temp_in_image = np.median(image)
         print(f"Ambient temperature measured in image: {ambient_temp_in_image:.2f} °C")
 
         plt.figure()
@@ -252,12 +252,12 @@ def view_all_thermal_from_blobs() -> None:
             left=0.1, bottom=0.1, right=0.9, top=1, wspace=None, hspace=None
         )
         plt.subplot(2, 1, 1)
-        plt.imshow(image_fff, cmap="jet")
+        plt.imshow(image, cmap="jet")
         plt.axis("off")
         plt.colorbar(label="Temperature (°C)")
         plt.subplot(2, 1, 2)
         plt.hist(
-            image_fff.flatten(),
+            image.flatten(),
             bins=100,
             range=(ambient_temp_in_image - 5, ambient_temp_in_image + 5),
         )
@@ -284,7 +284,7 @@ def view_all_thermal_from_blobs() -> None:
         data_rgb = data_rgba[:, :, :3]
 
         plt.imsave(
-            f"./results/{fff_blob_name.replace('/', '_').replace('.fff', '')}_visualization.png",
+            f"./results/{tiff_blob_name.replace('/', '_').replace('.tiff', '')}_visualization.png",
             data_rgb,
         )
     pass
@@ -292,30 +292,30 @@ def view_all_thermal_from_blobs() -> None:
 
 @app.command()
 def run_matching_single(
-    blob_name_fff: str = typer.Option(..., help="Name of the blob"),
+    blob_name: str = typer.Option(..., help="Name of the blob"),
     installation_code: str = typer.Option(
         ..., help="Installation code = name of the container"
     ),
 ) -> None:
-    tag_id: str = blob_name_fff.split("/")[-1].split("__")[0]
-    inspection_description: str = blob_name_fff.split("/")[-1].split("__")[2]
+    tag_id: str = blob_name.split("/")[-1].split("__")[0]
+    inspection_description: str = blob_name.split("/")[-1].split("__")[2]
     inspection_description = inspection_description.replace("-", " ")
 
     source_blob_store = BlobStore(
         installation_code=installation_code,
         connection_string=settings.SOURCE_STORAGE_CONNECTION_STRING,
     )
-    source_image_fff: np.ndarray = source_blob_store.download_fff(blob_name_fff)
+    source_image: np.ndarray = source_blob_store.download_thermal_tiff(blob_name)
 
     reference_blob_store = BlobStore(
         installation_code=installation_code,
         connection_string=settings.REFERENCE_STORAGE_CONNECTION_STRING,
     )
-    reference_image_fff_blob_name = (
-        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_FFF_FILENAME}"
+    reference_image_blob_name = (
+        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_TIFF_FILENAME}"
     )
-    reference_image_fff: np.ndarray = reference_blob_store.download_fff(
-        reference_image_fff_blob_name
+    reference_image: np.ndarray = reference_blob_store.download_thermal_tiff(
+        reference_image_blob_name
     )
     reference_polygon_blob_name = (
         f"{tag_id}_{inspection_description}/{settings.REFERENCE_POLYGON_FILENAME}"
@@ -325,22 +325,20 @@ def run_matching_single(
     )
 
     temperature, annotated_image, warped_polygon_list, warped_reference_img = (
-        process_thermal_image_fff(
-            reference_image_fff, source_image_fff, reference_polygon
-        )
+        process_thermal_image(reference_image, source_image, reference_polygon)
     )
 
     plot_matching(
-        reference_image_fff=reference_image_fff,
-        source_image_fff=source_image_fff,
+        reference_image=reference_image,
+        source_image=source_image,
         reference_polygon=reference_polygon,
         warped_polygon_list=warped_polygon_list,
     )
 
 
 def plot_matching(
-    reference_image_fff: np.ndarray,
-    source_image_fff: np.ndarray,
+    reference_image: np.ndarray,
+    source_image: np.ndarray,
     reference_polygon: list[tuple[int, int]],
     warped_polygon_list: list[tuple[int, int]],
 ) -> None:
@@ -358,7 +356,7 @@ def plot_matching(
 
     plt.subplot(1, 2, 1)
     plt.title("Reference image")
-    plt.imshow(reference_image_fff, cmap="jet")
+    plt.imshow(reference_image, cmap="jet")
     plt.fill(
         polygon_np[:, 0],
         polygon_np[:, 1],
@@ -372,7 +370,7 @@ def plot_matching(
 
     plt.subplot(1, 2, 2)
     plt.title("Source image")
-    plt.imshow(source_image_fff, cmap="jet")
+    plt.imshow(source_image, cmap="jet")
     plt.fill(
         warped_polygon_np[:, 0],
         warped_polygon_np[:, 1],
@@ -400,10 +398,10 @@ def run_matching_all(
         connection_string=settings.SOURCE_STORAGE_CONNECTION_STRING,
     )
     all_blob_names = source_blob_store.list_blobs_by_prefix(prefix="")
-    source_fff_blob_names = [
+    source_tiff_blob_names = [
         name
         for name in all_blob_names
-        if name.endswith(".fff")
+        if name.endswith(".tiff")
         and name.split("/")[-1].split("__")[0] == tag_id
         and name.split("/")[-1].split("__")[2]
         == inspection_description.replace(" ", "-")
@@ -413,11 +411,11 @@ def run_matching_all(
         installation_code=installation_code,
         connection_string=settings.REFERENCE_STORAGE_CONNECTION_STRING,
     )
-    reference_image_fff_blob_name = (
-        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_FFF_FILENAME}"
+    reference_image_blob_name = (
+        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_TIFF_FILENAME}"
     )
-    reference_image_fff: np.ndarray = reference_blob_store.download_fff(
-        reference_image_fff_blob_name
+    reference_image: np.ndarray = reference_blob_store.download_thermal_tiff(
+        reference_image_blob_name
     )
     reference_polygon_blob_name = (
         f"{tag_id}_{inspection_description}/{settings.REFERENCE_POLYGON_FILENAME}"
@@ -426,19 +424,17 @@ def run_matching_all(
         reference_polygon_blob_name
     )
 
-    for blob_name_fff in source_fff_blob_names:
-        print(f"Processing: {blob_name_fff}")
-        source_image_fff: np.ndarray = source_blob_store.download_fff(blob_name_fff)
+    for blob_name in source_tiff_blob_names:
+        print(f"Processing: {blob_name}")
+        source_image: np.ndarray = source_blob_store.download_thermal_tiff(blob_name)
 
-        temperature, annotated_image, warped_polygon_list, _ = (
-            process_thermal_image_fff(
-                reference_image_fff, source_image_fff, reference_polygon
-            )
+        temperature, annotated_image, warped_polygon_list, _ = process_thermal_image(
+            reference_image, source_image, reference_polygon
         )
 
         plot_matching(
-            reference_image_fff=reference_image_fff,
-            source_image_fff=source_image_fff,
+            reference_image=reference_image,
+            source_image=source_image,
             reference_polygon=reference_polygon,
             warped_polygon_list=warped_polygon_list,
         )

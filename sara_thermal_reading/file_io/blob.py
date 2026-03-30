@@ -8,7 +8,7 @@ from azure.storage.blob import BlobServiceClient, ContainerClient, ContentSettin
 from numpy.typing import NDArray
 from PIL import Image, ImageFile
 
-from sara_thermal_reading.file_io.fff_loader import load_fff_from_bytes
+from sara_thermal_reading.file_io.tiff_loader import load_thermal_tiff_from_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +56,10 @@ class BlobStore:
         polygon: list[tuple[int, int]] = json.loads(blob_json)
         return polygon
 
-    def download_fff(self, blob_name: str) -> np.ndarray:
+    def download_thermal_tiff(self, blob_name: str) -> np.ndarray:
         blob: bytes = self.download_bytes(blob_name)
-        image_fff: np.ndarray = load_fff_from_bytes(blob)
-        return image_fff
+        image: np.ndarray = load_thermal_tiff_from_bytes(blob)
+        return image
 
     def upload_bytes(
         self,

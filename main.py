@@ -8,9 +8,9 @@ from opentelemetry.trace import Status, StatusCode
 from sara_thermal_reading.config.logger import setup_logger
 from sara_thermal_reading.config.open_telemetry import setup_open_telemetry
 from sara_thermal_reading.config.settings import settings
-from sara_thermal_reading.main_fff_workflow import (
+from sara_thermal_reading.main_thermal_workflow import (
     BlobStorageLocation,
-    run_thermal_reading_fff_workflow,
+    run_thermal_reading_workflow,
 )
 
 setup_logger()
@@ -61,7 +61,7 @@ def run_thermal_reading(
         },
     ) as span:
         try:
-            run_thermal_reading_fff_workflow(
+            run_thermal_reading_workflow(
                 anonymized_location,
                 visualized_location,
                 tag_id,

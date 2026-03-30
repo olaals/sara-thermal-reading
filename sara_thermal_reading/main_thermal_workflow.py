@@ -43,7 +43,7 @@ class BlobStorageLocation(BaseModel):
         return v
 
 
-def process_thermal_image_fff(
+def process_thermal_image(
     reference_image: NDArray[np.float64],
     source_image_array: NDArray[np.float64],
     reference_polygon: list[tuple[int, int]],
@@ -99,7 +99,7 @@ def process_thermal_image_fff(
     )
 
 
-def run_thermal_reading_fff_workflow(
+def run_thermal_reading_workflow(
     anonymized_blob_storage_location: BlobStorageLocation,
     visualized_blob_storage_location: BlobStorageLocation,
     tag_id: str,
@@ -108,23 +108,23 @@ def run_thermal_reading_fff_workflow(
     temperature_output_file: str,
 ) -> None:
 
-    logger.info(f"Starting run thermal reading fff workflow")
+    logger.info(f"Starting run thermal reading workflow")
 
     logger.info(f"Loading reference image and polygon")
     reference_blob_store = BlobStore(
         installation_code=installation_code,
         connection_string=settings.REFERENCE_STORAGE_CONNECTION_STRING,
     )
-    reference_image_fff_blob_name = (
-        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_FFF_FILENAME}"
+    reference_image_blob_name = (
+        f"{tag_id}_{inspection_description}/{settings.REFERENCE_IMAGE_TIFF_FILENAME}"
     )
-    if not reference_blob_store.check_if_exists(reference_image_fff_blob_name):
+    if not reference_blob_store.check_if_exists(reference_image_blob_name):
         logger.error(
-            f"Reference fff image does not exist on  {installation_code=} with name {reference_image_fff_blob_name=}"
+            f"Reference TIFF image does not exist on  {installation_code=} with name {reference_image_blob_name=}"
         )
         return
-    reference_image_fff: np.ndarray = reference_blob_store.download_fff(
-        reference_image_fff_blob_name
+    reference_image: np.ndarray = reference_blob_store.download_thermal_tiff(
+        reference_image_blob_name
     )
     reference_polygon_blob_name = (
         f"{tag_id}_{inspection_description}/{settings.REFERENCE_POLYGON_FILENAME}"
@@ -139,21 +139,21 @@ def run_thermal_reading_fff_workflow(
     )
     logger.info(f"Downloaded reference image and polygon")
 
-    logger.info(f"Downloading thermal FFF image from anonymized")
+    logger.info(f"Downloading thermal TIFF image from anonymized")
     anonymized_blob_store = BlobStore(
         installation_code=anonymized_blob_storage_location.blob_container,
         connection_string=settings.SOURCE_STORAGE_CONNECTION_STRING,
     )
-    source_image_fff: np.ndarray = anonymized_blob_store.download_fff(
+    source_image: np.ndarray = anonymized_blob_store.download_thermal_tiff(
         blob_name=anonymized_blob_storage_location.blob_name
     )
     logger.info(
-        f"Downloaded FFF image from source storage account, shape: {source_image_fff.shape}"
+        f"Downloaded TIFF image from source storage account, shape: {source_image.shape}"
     )
 
-    logger.info(f"Processing thermal fff image")
-    temperature, annotated_image, _, _ = process_thermal_image_fff(
-        reference_image_fff, source_image_fff, reference_polygon
+    logger.info(f"Processing thermal image")
+    temperature, annotated_image, _, _ = process_thermal_image(
+        reference_image, source_image, reference_polygon
     )
     logger.info(f"Created annotated thermal visualization")
 

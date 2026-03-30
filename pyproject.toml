@@ -19,7 +19,7 @@ dependencies = [
     "pydantic-settings",
     "pathlib",
     "opencv-python",
-    "flirpy==0.3.0",
+    "tifffile",
     "typer",
     "matplotlib",
     "opentelemetry-api",

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 
-from sara_thermal_reading.file_io.fff_loader import load_fff_from_bytes
+from sara_thermal_reading.file_io.tiff_loader import load_thermal_tiff_from_bytes
 
 
 def plot_thermal_image(
@@ -30,13 +30,13 @@ def plot_thermal_image(
         ax.plot(points[:, 0], points[:, 1], color="lime", linestyle="-", linewidth=2)
 
 
-def plot_fff_from_path(
+def plot_thermal_from_path(
     file_path: Path, polygon_json_path: Optional[Path] = None
 ) -> None:
     with open(file_path, "rb") as f:
         file_bytes = f.read()
 
-    image = load_fff_from_bytes(file_bytes)
+    image = load_thermal_tiff_from_bytes(file_bytes)
 
     polygon_points = None
     if polygon_json_path:

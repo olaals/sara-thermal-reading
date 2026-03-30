@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     SOURCE_STORAGE_CONNECTION_STRING: str = Field(default="")
     DESTINATION_STORAGE_CONNECTION_STRING: str = Field(default="")
     REFERENCE_STORAGE_CONNECTION_STRING: str = Field(default="")
-    REFERENCE_IMAGE_FFF_FILENAME: str = Field(default="reference_image.fff")
+    REFERENCE_IMAGE_TIFF_FILENAME: str = Field(default="reference_image.tiff")
     REFERENCE_IMAGE_JPG_FILENAME: str = Field(default="reference_image.jpeg")
     REFERENCE_POLYGON_FILENAME: str = Field(default="reference_polygon.json")
     OTEL_SERVICE_NAME: str = Field(default="sara-thermal-reading")
