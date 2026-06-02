@@ -152,7 +152,7 @@ def generate_benchmark_plots(
         print("No results in file. Exiting.")
         return
 
-    # --- Pie chart at the specified threshold ---
+    # --- Confusion matrix at the specified threshold ---
     true_positive = sum(
         1 for r in results if r["verdict"] and r["alignment_score"] >= threshold
     )
@@ -166,35 +166,59 @@ def generate_benchmark_plots(
         1 for r in results if not r["verdict"] and r["alignment_score"] < threshold
     )
 
-    labels = [
-        "TP: Correct match, above threshold",
-        "FN: Correct match, below threshold",
-        "FP: Wrong match, above threshold",
-        "TN: Wrong match, below threshold",
-    ]
-    sizes = [true_positive, false_negative, false_positive, true_negative]
-    colors = ["#4CAF50", "#FFC107", "#F44336", "#2196F3"]
+    cm = np.array([[true_positive, false_negative], [false_positive, true_negative]])
+    cm_labels = np.array([["TP", "FN"], ["FP", "TN"]])
+    colors_map = np.array([["#4CAF50", "#FFC107"], ["#F44336", "#2196F3"]])
 
-    non_zero = [(l, s, c) for l, s, c in zip(labels, sizes, colors) if s > 0]
-    if non_zero:
-        fig, ax = plt.subplots(figsize=(8, 8))
-        ax.pie(
-            [s for _, s, _ in non_zero],
-            labels=[l for l, _, _ in non_zero],
-            colors=[c for _, _, c in non_zero],
-            autopct="%1.1f%%",
-            startangle=90,
-        )
-        ax.set_title(
-            f"Alignment Benchmark Results\n"
-            f"Threshold: {threshold} | Total: {len(results)} images"
-        )
-        plt.tight_layout()
-        plt.savefig(output_path, dpi=150)
-        plt.close(fig)
-        print(f"Pie chart saved to: {output_path}")
-    else:
-        print("All categories are zero. Pie chart not generated.")
+    fig, ax = plt.subplots(figsize=(7, 6))
+    ax.set_xlim(-0.5, 1.5)
+    ax.set_ylim(1.5, -0.5)
+
+    for i in range(2):
+        for j in range(2):
+            ax.add_patch(
+                plt.Rectangle(
+                    (j - 0.5, i - 0.5),
+                    1,
+                    1,
+                    facecolor=colors_map[i, j],
+                    alpha=0.6,
+                    edgecolor="white",
+                    linewidth=2,
+                )
+            )
+            ax.text(
+                j,
+                i,
+                f"{cm_labels[i, j]}\n{cm[i, j]}",
+                ha="center",
+                va="center",
+                fontsize=20,
+                fontweight="bold",
+            )
+
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    ax.set_xticklabels(
+        [f"Positive\n(score >= {threshold})", f"Negative\n(score < {threshold})"],
+        fontsize=11,
+    )
+    ax.set_yticklabels(
+        ["Actual Positive", "Actual Negative"],
+        fontsize=11,
+    )
+    ax.set_xlabel("Predicted", fontsize=13, fontweight="bold")
+    ax.set_ylabel("Actual", fontsize=13, fontweight="bold")
+    ax.set_title(
+        f"Alignment Benchmark — Confusion Matrix\n"
+        f"Threshold: {threshold} | Total: {len(results)} images",
+        fontsize=13,
+    )
+    ax.tick_params(length=0)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150)
+    plt.close(fig)
+    print(f"Confusion matrix saved to: {output_path}")
 
     print(
         f"Results at threshold {threshold}: TP={true_positive}, FN={false_negative}, "
